@@ -80,7 +80,7 @@ details.fold details.fold{margin:6px 0;border-color:var(--line)}
 <main id="app"></main>
 <div id="printArea"></div>
 <script src="roster.js"></script>
-<script src="firebase-config.js?v=20261120164725"></script>
+<script src="firebase-config.js?v=20261120165135"></script>
 <script>
 /* ===== 저장소 (지금은 이 기기 localStorage. 나중에 Firebase로 교체할 자리) ===== */
 /* ===== 시험 3종류 (2026-11-20 사용자): 단원별 모의고사 · 기출 예상 모의고사 · 실전 기출 모의고사 ===== */
@@ -262,7 +262,7 @@ window.addEventListener('hashchange',()=>{if(NAVSKIP){NAVSKIP=false;updateBack()
 function goBack(){if(NAVST.length>1){NAVST.pop();NAVSKIP=true;location.hash=NAVST[NAVST.length-1]}else location.hash='#/'}
 document.addEventListener('DOMContentLoaded',updateBack);
 /* 새 버전 알림: 사이트에 새 버전이 올라오면 화면 아래에 알려줘요 */
-const BUILD_ID='20261120164725';
+const BUILD_ID='20261120165135';
 async function checkNewVersion(){
   if(BUILD_ID==='dev'||!/^https?:/.test(location.protocol))return;
   try{const t=await fetch(location.pathname+'?chk='+Date.now(),{cache:'no-store'}).then(r=>r.text());
@@ -303,7 +303,7 @@ function catChips(cur,fn){return `<span class="row" style="gap:4px">${[['','전�
 const catSort=(a,b)=>catIdx(a.cat)-catIdx(b.cat)||a.series.localeCompare(b.series)||((a.round||0)-(b.round||0))||a.date.localeCompare(b.date);
 
 /* ===== 시험지별 성적표: 반이 달라도 같은 시험지를 한 표로 ===== */
-let SH_CAT='',SH_SER='',SH_CLS='';
+let SH_CAT='',SH_SER='',SH_CLS='',SH_AOA=[];
 function setShCat(v){SH_CAT=v;SH_SER='';render()}
 function setShSer(v){SH_SER=v;render()}
 function setShCls(v){SH_CLS=v;render()}
@@ -327,10 +327,11 @@ function sheetsPage(app){
   const bg=p=>p==null?'':p>=90?'#16a34a26':p>=75?'#16a34a12':p>=60?'#d9770626':'#dc262626';
   const col=catOf(cur.cat).c,stk='position:sticky;left:0;background:var(--card);z-index:1';
   const last=cols[cols.length-1];
+  SH_AOA=[['이름','반','학교',...cols.map(c=>(c.round?c.round+'회':c.e.date.slice(5))+(c.max!==100?' (/'+fmt(c.max)+')':'')),'평균(100점환산)','응시'],...rows.map(r=>[stu(r.s).name,classesOf(r.s).map(c=>c.name).join(', '),stu(r.s).school||'',...cols.map(c=>c.all[r.s]==null?'':+fmt(c.all[r.s])),r.avgP==null?'':+fmt(r.avgP),r.n+'/'+cols.length]),['전체 평균','','',...cols.map(c=>c.avg==null?'':+fmt(c.avg)),'','']];
   const card=(t,v,sub)=>`<div class="card" style="flex:1;min-width:130px;padding:10px 12px;border-top:4px solid ${col}"><div class="sub">${t}</div><div style="font-size:22px;font-weight:700">${v}</div>${sub?`<div class="sub">${sub}</div>`:''}</div>`;
   const clsRows=clsIds.map(id=>{const vs=cols.map(c=>{const a=Object.entries(c.all).filter(([s])=>classesOf(s).some(x=>x.id===id)).map(x=>x[1]);return a.length?{avg:avg(a),n:a.length}:null});return `<tr><td style="${stk}" class="sub">${esc(cls(id).name)} 평균</td><td></td><td></td>${vs.map(v=>`<td style="text-align:center" class="sub">${v?fmt(v.avg)+' <span style="font-size:11px">('+v.n+'명)</span>':'·'}</td>`).join('')}<td colspan="2"></td></tr>`}).join('');
   app.innerHTML=head+`<div class="row" style="margin-bottom:8px"><select onchange="setShSer(this.value)">${list.map(x=>`<option value="${esc(x.k)}" ${x.k===cur.k?'selected':''}>${SH_CAT?'':'['+catOf(x.cat).s+'] '}${esc(x.ser)} (${x.exams.length}회)</option>`).join('')}</select>
-   <select onchange="setShCls(this.value)"><option value="">전체 반</option>${clsIds.map(id=>`<option value="${id}" ${id===flt?'selected':''}>${esc(cls(id).name)}</option>`).join('')}</select><span class="sp"></span><button class="btn sm" onclick="printSheets()">인쇄</button></div>
+   <select onchange="setShCls(this.value)"><option value="">전체 반</option>${clsIds.map(id=>`<option value="${id}" ${id===flt?'selected':''}>${esc(cls(id).name)}</option>`).join('')}</select><span class="sp"></span><button class="btn sm pri" onclick="xlsSave([['시험지별 성적표',SH_AOA]],'시험지별_'+(document.querySelector('#shwrap h3')||{}).textContent)">📥 엑셀 다운</button><button class="btn sm" onclick="printSheets()">인쇄</button></div>
   <div id="shwrap"><h3 style="margin:6px 0;color:${col}">${esc(catOf(cur.cat).s)} · ${esc(cur.ser)}</h3>
   <div class="row" style="margin:8px 0">${card('응시 학생',rows.length+'명',flt?esc(cls(flt).name):clsIds.length+'개 반')}${card('회차',cols.length+'회',cols.map(c=>c.round?c.round+'회':'').filter(Boolean).join(' · '))}${card('최근 회차 평균',last&&last.avg!=null?fmt(last.avg)+'점':'-',last?`${last.round?last.round+'회 · ':''}최고 ${fmt(last.hi)} · 최저 ${fmt(last.lo)}`:'')}</div>
   <div class="scroll" style="max-height:none"><table class="t" style="white-space:nowrap"><thead><tr><th style="${stk}">이름</th><th>반</th><th>학교</th>${cols.map(c=>`<th style="text-align:center;min-width:76px;border-top:4px solid ${col}"><a href="#/exam/${c.e.id}?c=${c.e.classIds[0]}&tab=grade" style="color:inherit" title="${esc(c.e.name)}"><div style="font-size:16px;font-weight:700">${c.round?c.round+'회':esc(c.e.date.slice(5))}</div></a><div class="sub" style="font-weight:400">${esc(c.e.date.slice(5))}${c.max!==100?' · /'+fmt(c.max):''}</div><div class="sub" style="font-weight:400">응시 ${c.n}명</div></th>`).join('')}<th style="text-align:center;border-left:2px solid var(--line)">평균(100점)</th><th style="text-align:center">응시</th></tr></thead>
@@ -367,6 +368,41 @@ function schoolsPage(app){
   <div class="row" style="margin-top:12px"><input id="sch-new" placeholder="학교 추가 (예: 대치중)" style="width:180px"><button class="btn sm" onclick="schAdd()">+ 학교 추가</button></div>
   <p class="note" style="margin-top:8px">'서울' 로 시작하는 학교 이름은 줄여서(서울원촌중 → 원촌중) 같은 학교로 묶어요. 시험기간은 엑셀 '학교시험일정'(내신 일정 캘린더)에서 가져왔고, 비어 있는 곳은 직접 입력해 주세요. D-day 는 시험기간 시작(없으면 수학시험)까지예요.</p>`}
 
+/* ===== 엑셀 다운 (점수가 나오는 곳 어디서나) — 2026-11-20 사용자 ===== */
+function xlsName(s){return String(s||'').replace(/[\\\/:*?"<>|]/g,'_').slice(0,60)}
+function tsv2aoa(t){return String(t||'').split('\n').map(l=>l.split('\t').map(v=>{const n=v.trim();return n!==''&&!isNaN(n)?+n:v}))}
+function xlsLoad(){return window.XLSX?Promise.resolve():loadScript('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js')}
+async function xlsSave(sheets,name){
+  const dl=(blob,fn)=>{const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fn;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500)};
+  try{await xlsLoad();const wb=XLSX.utils.book_new(),used=new Set();
+    sheets.forEach(([n,a],i)=>{let t=String(n).replace(/[\\\/\?\*\[\]:]/g,' ').trim().slice(0,28)||('시트'+(i+1));let u=t,k=2;while(used.has(u))u=t.slice(0,25)+'_'+(k++);used.add(u);
+      const ws=XLSX.utils.aoa_to_sheet(a),w=[];a.forEach(r=>r.forEach((v,j)=>{const s=String(v==null?'':v),l=s.length*(/[가-힣]/.test(s)?2:1);w[j]=Math.max(w[j]||6,Math.min(40,l+2))}));ws['!cols']=w.map(x=>({wch:x}));XLSX.utils.book_append_sheet(wb,ws,u)});
+    XLSX.writeFile(wb,xlsName(name)+'.xlsx');toast('엑셀 파일을 내려받았어요')}
+  catch(e){const csv='﻿'+sheets[0][1].map(r=>r.map(v=>{v=v==null?'':String(v);return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}).join(',')).join('\r\n');dl(new Blob([csv],{type:'text/csv;charset=utf-8'}),xlsName(name)+'.csv');toast('엑셀 대신 CSV 로 내려받았어요(인터넷을 확인해 주세요)')}}
+const xlsExamsSorted=()=>DB.exams.slice().sort((a,b)=>catIdx(examCat(a))-catIdx(examCat(b))||examSeries(a).localeCompare(examSeries(b))||((examRound(a)||0)-(examRound(b)||0))||a.date.localeCompare(b.date));
+const xlsClsNames=s=>classesOf(s).map(c=>c.name).join(', ');
+function xlsAll(){
+  const long=[['종류','시험지','회차','날짜','반','이름','학교','점수','만점','100점환산','등수(응시자 중)','응시자수']],exs=xlsExamsSorted();
+  exs.forEach(e=>{const max=totalPt(e)||100,all={};Object.keys(DB.results[e.id]||{}).forEach(s=>{if(stu(s)){const v=score(e,s);if(v!=null)all[s]=v}});const vals=Object.values(all);
+    Object.entries(all).forEach(([s,v])=>long.push([catOf(examCat(e)).s,examSeries(e),examRound(e)||'',e.date,xlsClsNames(s),stu(s).name,stu(s).school||'',+fmt(v),+fmt(max),+fmt(v/max*100),1+vals.filter(y=>y>v).length,vals.length]))});
+  const sheets=[['전체 성적(정리표)',long]];
+  activeClasses().filter(c=>c.role!=='외부').forEach(c=>{
+    const ex=exs.filter(e=>c.members.some(m=>score(e,m.id)!=null));
+    const head=['이름','학교',...ex.map(e=>`${catOf(examCat(e)).s} ${examRound(e)?examRound(e)+'회':e.date.slice(5)} ${examSeries(e)}`),'평균(100점환산)','응시'];
+    const rows=c.members.map(m=>stu(m.id)).filter(Boolean).map(s=>{const ps=[],cells=ex.map(e=>{const v=score(e,s.id);if(v==null)return '';ps.push(v/(totalPt(e)||100)*100);return +fmt(v)});return [s.name,s.school||'',...cells,ps.length?+fmt(avg(ps)):'',ps.length+'/'+ex.length]});
+    sheets.push([c.name,[head,...rows]])});
+  xlsSave(sheets,'내신성적_전체_'+today())}
+function xlsExam(eid){const e=DB.exams.find(x=>x.id===eid);if(!e)return;const max=totalPt(e)||100;
+  const ids=Object.keys(DB.results[e.id]||{}).filter(s=>stu(s)&&score(e,s)!=null),vals=ids.map(s=>score(e,s));
+  const sym=v=>v==null?'':(+v>=1?'○':(+v>0?'△':'✕'));
+  const head=['이름','반','학교','총점','100점환산','등수',...e.items.map((_,i)=>(i+1)+'번')];
+  const key=['정답/배점','','','','','',...e.items.map(it=>(it.ans||'')+(it.pt?' ('+it.pt+'점)':''))];
+  const rows=ids.sort((a,b)=>score(e,b)-score(e,a)).map(s=>{const r=DB.results[e.id][s];return [stu(s).name,xlsClsNames(s),stu(s).school||'',+fmt(score(e,s)),+fmt(score(e,s)/max*100),1+vals.filter(y=>y>score(e,s)).length,...e.items.map((_,i)=>sym((r.m||[])[i]))]});
+  xlsSave([['정오표',[head,key,...rows]]],'정오표_'+e.name)}
+function xlsStudent(sid){const s=stu(sid);if(!s)return;
+  const head=['종류','시험지','회차','날짜','점수','만점','100점환산','등수(응시자 중)','응시자수'];
+  const rows=DB.exams.filter(e=>score(e,sid)!=null).sort((a,b)=>a.date.localeCompare(b.date)||catIdx(examCat(a))-catIdx(examCat(b))).map(e=>{const max=totalPt(e)||100,v=score(e,sid),all=Object.keys(DB.results[e.id]).filter(x=>stu(x)&&score(e,x)!=null).map(x=>score(e,x));return [catOf(examCat(e)).s,examSeries(e),examRound(e)||'',e.date,+fmt(v),+fmt(max),+fmt(v/max*100),1+all.filter(y=>y>v).length,all.length]});
+  xlsSave([[s.name,[['이름',s.name,'학교',s.school||'','반',xlsClsNames(sid)],[],head,...rows]]],'성적_'+s.name)}
 /* ===== 문자 (내신 사이트): 입력 → 자동 문자 → 복사. 2026-11-20 사용자 양식 (v2: 반 일괄 적용 · TEST 여러 개) ===== */
 function mDow(d){return DOW[new Date(d+'T00:00:00').getDay()]}
 function mDateTxt(d){if(!d)return '';const t=new Date(d+'T00:00:00');return (t.getMonth()+1)+'/'+t.getDate()+' ('+DOW[t.getDay()]+')'}
@@ -1262,7 +1298,7 @@ function scoresPage(app,c){
   // 엑셀 복사
   SC_TSV=['이름',...L.map(x=>x.date.slice(5)+' '+x.label),'평균(100점환산)','평균 등수','응시'].join('\t')+'\n'+rows.map(r=>[stu(r.s).name,...L.map(x=>x.sc[r.s]==null?'':fmt(x.sc[r.s])),r.avgP==null?'':fmt(r.avgP),r.rk==null?'':fmt(r.rk),r.n+'/'+L.length].join('\t')).join('\n')+'\n'+['반 평균',...L.map(x=>fmt(x.avg)),fmt(allAvg),'',''].join('\t');
   app.innerHTML=`<div class="row"><h2 style="margin:0">${esc(c.name)}</h2>${roleBadge(c.role)+trkBadge(c)}<span class="sub">${c.days?esc(c.days)+' · ':''}총 ${c.members.filter(m=>!m.hold).length}명${c.members.some(m=>m.hold)?' (휴원 '+c.members.filter(m=>m.hold).length+')':''}${periodTxt(c)}</span></div>${classTabs(cid,'scores',c)}
-  <div class="row" style="margin-bottom:8px">${sel([['total','총점 (부분점수 포함)'],['raw','원점수만 (부분점수 제외)'],['part','부분점수만']],SC_BASIS,'setScBasis')}${catChips(SC_CAT,'setScCat')}${sel([[0,'전체 기간'],[5,'최근 5회'],[10,'최근 10회']],SC_N,'setScN')}<span class="sp"></span><button class="btn sm" onclick="copyText(SC_TSV)">엑셀용 복사</button><button class="btn sm" onclick="printScores()">인쇄</button></div>
+  <div class="row" style="margin-bottom:8px">${sel([['total','총점 (부분점수 포함)'],['raw','원점수만 (부분점수 제외)'],['part','부분점수만']],SC_BASIS,'setScBasis')}${catChips(SC_CAT,'setScCat')}${sel([[0,'전체 기간'],[5,'최근 5회'],[10,'최근 10회']],SC_N,'setScN')}<span class="sp"></span><button class="btn sm pri" onclick="xlsSave([['성적표',tsv2aoa(SC_TSV)]],'성적표_${esc(c.name)}')">📥 엑셀 다운</button><button class="btn sm" onclick="copyText(SC_TSV)">엑셀용 복사</button><button class="btn sm" onclick="printScores()">인쇄</button></div>
   ${L.length?`<div id="swrap">
   <div class="row" style="margin:8px 0">${card('기록 횟수',L.length+'회',EXAM_CATS.map(c=>c.s+' '+L.filter(x=>x.cat===c.k).length).join(' · '))}${card('최근 반 평균',fmt(last.avg)+'점',dLast==null?'':`직전 대비 ${sgn(dLast)}%p`,dLast==null?'':dLast>0?'#16a34a':dLast<0?'#dc2626':'')}${card('기간 평균(100점 환산)',fmt(allAvg),best?`최고 ${best.date.slice(5)} ${fmt(best.avgP)}`:'')}${card('최근 60점 미만',last.low+'명',`응시 ${last.n}명 중`,last.low?'#dc2626':'')}${card('주의 학생',warn.length+'명',warn.length?'아래 목록 확인':'없음',warn.length?'#d97706':'')}</div>
   <h3>반 평균 추이 <span class="sub">${unit} 기준, 100점 환산 · 점선은 최고/최저</span>
@@ -1344,7 +1380,7 @@ function home(app){
       <div class="row"><b>${esc(c.name)}</b><span class="sp"></span>${roleBadge(c.role)+trkBadge(c)}</div>
       <div class="sub">${c.days?esc(c.days)+' · ':''}${c.members.length}명${periodTxt(c)}${c.members.some(m=>m.hold)?' (휴원 포함)':''}</div>
       <div class="sub" style="margin-top:6px">${ex?`최근: ${esc(ex.name)} · 평균 ${fmt(examAvg(ex))}점`:'등록된 시험 없음'}</div></div>`};
-  app.innerHTML=`<div class="row"><h2 style="margin:0">내신반</h2><span class="sp"></span><button class="btn sm" onclick="location.hash='#/students'">학생 전체</button><button class="btn sm pri" onclick="location.hash='#/classedit/new'">+ 반 추가</button></div>
+  app.innerHTML=`<div class="row"><h2 style="margin:0">내신반</h2><span class="sp"></span><button class="btn sm pri" onclick="xlsAll()">📥 성적 엑셀 (전체 반)</button><button class="btn sm" onclick="location.hash='#/students'">학생 전체</button><button class="btn sm pri" onclick="location.hash='#/classedit/new'">+ 반 추가</button></div>
     ${jobBlock()}<div class="grid" style="margin-top:10px">${act.map(card).join('')}</div>
     ${arc.length?`<h3>보관된 반</h3><div class="grid">${arc.map(card).join('')}</div>`:''}
     <p class="note" style="margin-top:16px">학생은 반 안의 [명단] 탭이나 [학생 전체]에서 언제든 추가·이동·휴원·퇴원할 수 있어요. 데이터는 [백업]에서 파일로 받아둘 수 있어요.</p>`;
@@ -1482,7 +1518,7 @@ function examPage(app,id,cid,tab){
   cid=cid&&e.classIds.includes(cid)?cid:e.classIds[0];
   const c=cls(cid);
   const sel=e.classIds.length>1?`<select onchange="location.hash='#/exam/${id}?c='+this.value+'&tab=${tab}'">${e.classIds.map(x=>`<option value="${x}" ${x===cid?'selected':''}>${esc(cls(x).name)}</option>`).join('')}</select>`:'';
-  app.innerHTML=`<div class="row"><button class="btn sm" onclick="location.hash='#/class/${cid}'">← ${esc(c.name)}</button><b>${esc(e.name)}</b><span class="badge">${esc(e.type)}</span><span class="sub">${esc(e.date)}</span><span class="badge d">응시 ${examStudents(e,cid).filter(m=>score(e,m.id)!=null).length} / 총 ${examStudents(e,cid).length}명</span>${sel}<label class="sub">과정 <select onchange="setCourse('${id}',this.value)">${courseOpts(e)}</select></label></div>
+  app.innerHTML=`<div class="row"><button class="btn sm" onclick="location.hash='#/class/${cid}'">← ${esc(c.name)}</button><b>${esc(e.name)}</b><span class="badge">${esc(e.type)}</span><span class="sub">${esc(e.date)}</span><span class="badge d">응시 ${examStudents(e,cid).filter(m=>score(e,m.id)!=null).length} / 총 ${examStudents(e,cid).length}명</span>${sel}<button class="btn sm pri" onclick="xlsExam('${id}')">📥 엑셀 다운</button><label class="sub">과정 <select onchange="setCourse('${id}',this.value)">${courseOpts(e)}</select></label></div>
   <div class="tabs" style="margin-top:10px"><a class="${tab==='analysis'?'on':''}" href="#/exam/${id}?c=${cid}&tab=analysis">분석·상담</a><a class="${tab==='grade'?'on':''}" href="#/exam/${id}?c=${cid}&tab=grade">결과표·오답 입력</a><a class="${tab==='part'?'on':''}" href="#/exam/${id}?c=${cid}&tab=part">부분점수·이유</a></div><div id="pane"></div>`;
   tab==='grade'?resultGrid($('#pane'),e,c):tab==='msg'?msgPane($('#pane'),e,c):tab==='part'?partPane($('#pane'),e,c):analysis($('#pane'),e,c);
 }
@@ -1541,7 +1577,7 @@ function studentPage(app,sid){
     <select onchange="inClass('${sid}',this.value)"><option value="">+ 반에 넣기…</option>${rest.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('')}</select></div>
   <details><summary class="sub">학생 정보 수정 · 퇴원 처리</summary><div class="card" style="margin-top:8px"><p class="note" style="margin:0 0 8px"><b>휴원</b>은 반에 남은 채 잠시 쉬는 상태(반 [명단]의 휴원 버튼), <b>퇴원</b>은 모든 반에서 빠지고 보관하는 거예요. 퇴원해도 시험·출결 기록은 남고 [퇴원 취소]로 원래 반에 되돌릴 수 있어요.${s.archived&&s.leftFrom&&s.leftFrom.length?` 퇴원 전 반: ${esc(s.leftFrom.map(x=>(cls(x.cid)||{}).name||'').join(', '))}`:''}</p><div class="row"><input id="sn" value="${esc(s.name)}" style="width:100px"><input id="sg" value="${esc(s.grade)}" placeholder="학년" style="width:90px"><input id="ss" value="${esc(s.school)}" placeholder="학교" style="width:150px"><input id="se" value="${esc(eidOf(s))}" placeholder="학원 ID" style="width:110px"><button class="btn pri" onclick="saveStu('${sid}')">저장</button></div>
    <div class="row" style="margin-top:8px">${s.archived?`<button class="btn" onclick="archiveStu('${sid}')">퇴원 취소(복원)</button>`:`<button class="btn" onclick="archiveStu('${sid}')">퇴원 처리 (모든 반에서 빼고 보관)</button>`}${hasResults(sid)?'':`<button class="btn danger" onclick="delStu('${sid}')">삭제</button>`}</div></div></details>
-  ${foldBar()}
+  ${foldBar()}<div class="row" style="margin:6px 0"><button class="btn sm pri" onclick="xlsStudent('${sid}')">📥 이 학생 성적 엑셀 다운</button></div>
   ${courseSection(sid)}
   ${foldH('st-diff',diffStuBlock(sid))}
   ${fold('st-att','출결',attCalendar(sid)+attBlock(sid))}
