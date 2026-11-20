@@ -76,13 +76,20 @@ details.fold details.fold{margin:6px 0;border-color:var(--line)}
 </style>
 </head>
 <body>
-<header><h1 onclick="location.hash='#/'">내신 사이트</h1><span id="syncState" class="sub"></span><nav><button class="btn sm" id="backBtn" onclick="goBack()" title="이전 화면으로 (앱 안에서 본 순서대로)">← 뒤로</button><button class="btn sm" id="undoBtn" onclick="undo()" title="직전 동작 되돌리기 (Ctrl+Z)">↶ 되돌리기</button><button class="btn sm" id="redoBtn" onclick="redo()" title="다시 실행">↷</button><button class="btn sm" onclick="location.hash='#/'">홈</button><button class="btn sm" onclick="location.hash='#/msg'">문자</button><button class="btn sm" onclick="location.hash='#/backup'">백업</button></nav></header>
+<header><h1 onclick="location.hash='#/'">내신 사이트</h1><span id="syncState" class="sub"></span><nav><button class="btn sm" id="backBtn" onclick="goBack()" title="이전 화면으로 (앱 안에서 본 순서대로)">← 뒤로</button><button class="btn sm" id="undoBtn" onclick="undo()" title="직전 동작 되돌리기 (Ctrl+Z)">↶ 되돌리기</button><button class="btn sm" id="redoBtn" onclick="redo()" title="다시 실행">↷</button><button class="btn sm" onclick="location.hash='#/'">홈</button><button class="btn sm" onclick="location.hash='#/sheets'">시험지별</button><button class="btn sm" onclick="location.hash='#/schools'">학교일정</button><button class="btn sm" onclick="location.hash='#/msg'">문자</button><button class="btn sm" onclick="location.hash='#/backup'">백업</button></nav></header>
 <main id="app"></main>
 <div id="printArea"></div>
 <script src="roster.js"></script>
-<script src="firebase-config.js"></script>
+<script src="firebase-config.js?v=20261120163427"></script>
 <script>
 /* ===== 저장소 (지금은 이 기기 localStorage. 나중에 Firebase로 교체할 자리) ===== */
+/* ===== 시험 3종류 (2026-11-20 사용자): 단원별 모의고사 · 기출 예상 모의고사 · 실전 기출 모의고사 ===== */
+const EXAM_CATS=[{k:'단원별 모의고사',s:'단원별',c:'#7c3aed'},{k:'기출 예상 모의고사',s:'기출예상',c:'#1968b3'},{k:'실전 기출 모의고사',s:'실전기출',c:'#0f766e'}];
+function guessCat(e){if(EXAM_CATS.some(c=>c.k===e.type))return e.type;const n=e.name||'';if(n.includes('단원별'))return EXAM_CATS[0].k;if(n.includes('실전'))return EXAM_CATS[2].k;if(n.includes('예상'))return EXAM_CATS[1].k;return null}
+function normExamTypes(){(DB.exams||[]).forEach(e=>{const c=guessCat(e);if(c&&e.type!==c)e.type=c})}
+const SCHOOL_SEED={'경원중':['2026-12-14','2026-12-16'],'동덕여중':['2026-12-08','2026-12-10'],'동양중':['',''],'동작중':['',''],'방배중':['2026-12-15','2026-12-17'],'상현중':['',''],'서문여중':['2026-12-11','2026-12-15'],'서운중':['2026-12-16','2026-12-18'],'서일중':['2026-12-14','2026-12-16'],'서초중':['2026-12-16','2026-12-17'],'세화여중':['2026-12-14','2026-12-17'],'신동중':['2026-12-08','2026-12-09'],'신반포중':['2026-12-21','2026-12-23'],'언북중':['',''],'여의도중':['',''],'영동중':['2026-12-14','2026-12-16'],'오산중':['',''],'옥정중':['',''],'원촌중':['2026-12-09','2026-12-10'],'중대부중':['','']}; // 엑셀 학교시험일정(내신 일정 캘린더)의 시험기간
+function schoolKey(n){return String(n||'').trim().replace(/^서울/,'')}
+function ensureSchools(){const S=DB.schools=DB.schools||{};Object.entries(SCHOOL_SEED).forEach(([k,v])=>{if(!S[k])S[k]={start:v[0],end:v[1],math:'',prep:''}});Object.values((DB.roster&&DB.roster.students)||{}).forEach(x=>{const k=schoolKey(x.school);if(k&&!S[k])S[k]={start:'',end:'',math:'',prep:''}})}
 const KEY='naesin_v1';
 const EMPTY=()=>({exams:[],results:{},memos:{},comments:{},notes:{},att:{},daily:[],lessons:[],roster:null});
 let DB=(()=>{try{return Object.assign(EMPTY(),JSON.parse(localStorage.getItem(KEY)||'{}'))}catch(e){return EMPTY()}})();
@@ -91,6 +98,7 @@ function ensureRoster(){ // 처음 한 번만 roster.js(초기 명단)를 복사
   
   const AL={daesu:['[IL][GS11]대수상A_월금 17:00'],gong2:['[IL][GS11]공수2상A_월금 17:00'],mijuk:['[IL][GS11]미적1상_화목 17:00'],gstop:['[IL][GSTOP11]중3-2_화목 17:00','GSTOP3-2','GSTOP 중3-2'],pl:['[PL11]중고등_수 17:00'],sun:['[SM11]일요단과A_일 12:30'],jd2:['[SM11]중대기2_일 17:00'],ext:['외부','외부학생']};
   DB.roster.classes.forEach(c=>{if(!c.alias&&AL[c.id])c.alias=AL[c.id]});
+  normExamTypes();ensureSchools();
 }
 ensureRoster();
 let LAST=JSON.stringify(DB);const UNDO=[],REDO=[];
@@ -217,7 +225,7 @@ const stu=id=>DB.roster.students[id];
 const trkBadge=c=>c.track==='내신'?'<span class="badge" style="background:#b45309;color:#fff">내신 특별반</span>':'';
 const roleBadge=r=>`<span class="badge ${r==='담임'?'d':r==='부담임'?'b':'s'}">${esc(r)}</span>`;
 const examsOf=cid=>DB.exams.filter(e=>e.classIds.includes(cid)).sort((a,b)=>b.date.localeCompare(a.date));
-const EXAM_TYPES=['단원테스트','서술테스트','기출모의고사','학력평가','분기평가','기타'];
+const EXAM_TYPES=EXAM_CATS.map(c=>c.k);
 const totalPt=e=>e.items.reduce((s,i)=>s+(+i.pt||0),0)+(+e.base||0); // base = 기본점수
 function score(e,sid){
   const r=(DB.results[e.id]||{})[sid]; if(!r) return null;
@@ -254,7 +262,7 @@ window.addEventListener('hashchange',()=>{if(NAVSKIP){NAVSKIP=false;updateBack()
 function goBack(){if(NAVST.length>1){NAVST.pop();NAVSKIP=true;location.hash=NAVST[NAVST.length-1]}else location.hash='#/'}
 document.addEventListener('DOMContentLoaded',updateBack);
 /* 새 버전 알림: 사이트에 새 버전이 올라오면 화면 아래에 알려줘요 */
-const BUILD_ID='20261120160700';
+const BUILD_ID='20261120163427';
 async function checkNewVersion(){
   if(BUILD_ID==='dev'||!/^https?:/.test(location.protocol))return;
   try{const t=await fetch(location.pathname+'?chk='+Date.now(),{cache:'no-store'}).then(r=>r.text());
@@ -282,6 +290,80 @@ setInterval(jobPoll,20000);
 function jobBlock(){const j=JOBST||{};
   if(j.state==='running')return `<div class="card" style="margin:10px 0;border-color:#f59e0b;background:#fffbeb"><div class="row"><b style="font-size:16px">⏳ 작업 중</b><span class="sub">${jobTime(j.startedAt)} 시작 · 끝나면 여기에 완료로 바뀌어요</span><span class="sp"></span><a href="javascript:void 0" class="sub" onclick="if(confirm('작업 상태를 초기화할까요?'))jobReset()">초기화</a></div></div>`;
   return `<div class="card" style="margin:10px 0">${j.state==='done'?`<div style="margin-bottom:8px"><b style="color:#16a34a;font-size:16px">✔ 작업 완료</b> <span class="sub">${jobTime(j.doneAt)}</span></div>`:''}<div class="row"><button class="btn pri" onclick="jobStart()">▶ 작업 시작</button><span class="sub">답안지를 접수 폴더에 올린 뒤 눌러 주세요.</span></div></div>`}
+
+/* ===== 시험 종류·회차 도우미 ===== */
+const catOf=k=>EXAM_CATS.find(c=>c.k===k)||{k:'기타',s:'기타',c:'#64748b'};
+const catIdx=k=>{const i=EXAM_CATS.findIndex(c=>c.k===k);return i<0?9:i};
+function examCat(e){return guessCat(e)||'기타'}
+function examSeries(e){return (e.name||'').replace(/\s*\d+\s*회\s*$/,'').trim()}
+function examRound(e){const m=(e.name||'').match(/(\d+)\s*회\s*$/);return m?+m[1]:null}
+function catChips(cur,fn){return `<span class="row" style="gap:4px">${[['','전체 (같이 보기)'],...EXAM_CATS.map(c=>[c.k,c.s])].map(([k,t])=>{const col=k?catOf(k).c:'#334155';return `<button class="btn sm" style="${cur===k?`background:${col};border-color:${col};color:#fff`:`border-color:${col};color:${col}`}" onclick="${fn}('${k}')">${t}</button>`}).join('')}</span>`}
+const catSort=(a,b)=>catIdx(a.cat)-catIdx(b.cat)||a.series.localeCompare(b.series)||((a.round||0)-(b.round||0))||a.date.localeCompare(b.date);
+
+/* ===== 시험지별 성적표: 반이 달라도 같은 시험지를 한 표로 ===== */
+let SH_CAT='',SH_SER='',SH_CLS='';
+function setShCat(v){SH_CAT=v;SH_SER='';render()}
+function setShSer(v){SH_SER=v;render()}
+function setShCls(v){SH_CLS=v;render()}
+function printSheets(){const w=document.getElementById('shwrap');if(!w)return;$('#printArea').innerHTML=`<div class="rep" style="padding:16px"><h1>시험지별 성적표</h1><div>${today()} 발행</div>${w.innerHTML}</div>`;setTimeout(()=>window.print(),50)}
+function sheetsPage(app){
+  const map={};
+  DB.exams.filter(e=>Object.keys(DB.results[e.id]||{}).length).forEach(e=>{const cat=examCat(e),ser=examSeries(e),k=cat+'|'+ser;(map[k]=map[k]||{k,cat,ser,exams:[]}).exams.push(e)});
+  const list=Object.values(map).filter(x=>!SH_CAT||x.cat===SH_CAT).sort((a,b)=>catIdx(a.cat)-catIdx(b.cat)||a.ser.localeCompare(b.ser));
+  const cur=list.find(x=>x.k===SH_SER)||list[0];
+  const head=`<div class="row"><h2 style="margin:0">시험지별 성적표</h2><span class="sub">반이 달라도 같은 시험지를 한 표로 봐요</span></div><div class="row" style="margin:8px 0">${catChips(SH_CAT,'setShCat')}</div>`;
+  if(!cur){app.innerHTML=head+'<p class="note">아직 성적이 입력된 시험이 없어요.</p>';return}
+  const exams=cur.exams.slice().sort((a,b)=>(examRound(a)||0)-(examRound(b)||0)||a.date.localeCompare(b.date));
+  const takers=new Set();exams.forEach(e=>Object.keys(DB.results[e.id]).forEach(s=>{if(stu(s)&&score(e,s)!=null)takers.add(s)}));
+  const clsIds=[...new Set([...takers].flatMap(s=>classesOf(s).map(c=>c.id)))];
+  const flt=SH_CLS&&clsIds.includes(SH_CLS)?SH_CLS:'';
+  const inCls=s=>!flt||classesOf(s).some(c=>c.id===flt);
+  const cols=exams.map(e=>{const max=totalPt(e)||100,all={};Object.keys(DB.results[e.id]).forEach(s=>{if(stu(s)){const v=score(e,s);if(v!=null)all[s]=v}});const vals=Object.values(all);
+    const rank={};Object.entries(all).forEach(([s,v])=>rank[s]=1+vals.filter(y=>y>v).length);
+    return {e,max,all,rank,n:vals.length,avg:vals.length?avg(vals):null,hi:vals.length?Math.max(...vals):null,lo:vals.length?Math.min(...vals):null,round:examRound(e)}});
+  const rows=[...takers].filter(inCls).map(s=>{const ps=cols.map(c=>c.all[s]==null?null:c.all[s]/c.max*100).filter(v=>v!=null);return {s,avgP:ps.length?avg(ps):null,n:ps.length}}).sort((a,b)=>(b.avgP==null?-1:b.avgP)-(a.avgP==null?-1:a.avgP));
+  const bg=p=>p==null?'':p>=90?'#16a34a26':p>=75?'#16a34a12':p>=60?'#d9770626':'#dc262626';
+  const col=catOf(cur.cat).c,stk='position:sticky;left:0;background:var(--card);z-index:1';
+  const last=cols[cols.length-1];
+  const card=(t,v,sub)=>`<div class="card" style="flex:1;min-width:130px;padding:10px 12px;border-top:4px solid ${col}"><div class="sub">${t}</div><div style="font-size:22px;font-weight:700">${v}</div>${sub?`<div class="sub">${sub}</div>`:''}</div>`;
+  const clsRows=clsIds.map(id=>{const vs=cols.map(c=>{const a=Object.entries(c.all).filter(([s])=>classesOf(s).some(x=>x.id===id)).map(x=>x[1]);return a.length?{avg:avg(a),n:a.length}:null});return `<tr><td style="${stk}" class="sub">${esc(cls(id).name)} 평균</td><td></td><td></td>${vs.map(v=>`<td style="text-align:center" class="sub">${v?fmt(v.avg)+' <span style="font-size:11px">('+v.n+'명)</span>':'·'}</td>`).join('')}<td colspan="2"></td></tr>`}).join('');
+  app.innerHTML=head+`<div class="row" style="margin-bottom:8px"><select onchange="setShSer(this.value)">${list.map(x=>`<option value="${esc(x.k)}" ${x.k===cur.k?'selected':''}>${SH_CAT?'':'['+catOf(x.cat).s+'] '}${esc(x.ser)} (${x.exams.length}회)</option>`).join('')}</select>
+   <select onchange="setShCls(this.value)"><option value="">전체 반</option>${clsIds.map(id=>`<option value="${id}" ${id===flt?'selected':''}>${esc(cls(id).name)}</option>`).join('')}</select><span class="sp"></span><button class="btn sm" onclick="printSheets()">인쇄</button></div>
+  <div id="shwrap"><h3 style="margin:6px 0;color:${col}">${esc(catOf(cur.cat).s)} · ${esc(cur.ser)}</h3>
+  <div class="row" style="margin:8px 0">${card('응시 학생',rows.length+'명',flt?esc(cls(flt).name):clsIds.length+'개 반')}${card('회차',cols.length+'회',cols.map(c=>c.round?c.round+'회':'').filter(Boolean).join(' · '))}${card('최근 회차 평균',last&&last.avg!=null?fmt(last.avg)+'점':'-',last?`${last.round?last.round+'회 · ':''}최고 ${fmt(last.hi)} · 최저 ${fmt(last.lo)}`:'')}</div>
+  <div class="scroll" style="max-height:none"><table class="t" style="white-space:nowrap"><thead><tr><th style="${stk}">이름</th><th>반</th><th>학교</th>${cols.map(c=>`<th style="text-align:center;min-width:76px;border-top:4px solid ${col}"><a href="#/exam/${c.e.id}?c=${c.e.classIds[0]}&tab=grade" style="color:inherit" title="${esc(c.e.name)}"><div style="font-size:16px;font-weight:700">${c.round?c.round+'회':esc(c.e.date.slice(5))}</div></a><div class="sub" style="font-weight:400">${esc(c.e.date.slice(5))}${c.max!==100?' · /'+fmt(c.max):''}</div><div class="sub" style="font-weight:400">응시 ${c.n}명</div></th>`).join('')}<th style="text-align:center;border-left:2px solid var(--line)">평균(100점)</th><th style="text-align:center">응시</th></tr></thead>
+  <tbody>${rows.map(r=>`<tr><td style="${stk};font-weight:600"><a href="#/student/${r.s}" style="color:inherit">${esc(stu(r.s).name)}</a></td><td class="sub">${esc(classesOf(r.s).map(c=>c.name).join(', '))}</td><td class="sub">${esc(stu(r.s).school||'')}</td>${cols.map(c=>{const v=c.all[r.s];return v==null?'<td style="text-align:center;color:#bbb">·</td>':`<td style="text-align:center;background:${bg(v/c.max*100)}"><b>${fmt(v)}</b><div class="sub" style="font-size:11px">${c.rank[r.s]}/${c.n}등</div></td>`}).join('')}<td style="text-align:center;border-left:2px solid var(--line)"><b>${r.avgP==null?'-':fmt(r.avgP)}</b></td><td style="text-align:center">${r.n}/${cols.length}</td></tr>`).join('')}</tbody>
+  <tfoot><tr style="background:var(--bg)"><td style="${stk};font-weight:700">전체 평균 (모든 반)</td><td></td><td></td>${cols.map(c=>`<td style="text-align:center"><b>${c.avg==null?'-':fmt(c.avg)}</b></td>`).join('')}<td colspan="2"></td></tr>${clsRows}
+  <tr><td style="${stk}" class="sub">최고 / 최저</td><td></td><td></td>${cols.map(c=>`<td style="text-align:center" class="sub">${c.hi==null?'-':fmt(c.hi)+' / '+fmt(c.lo)}</td>`).join('')}<td colspan="2"></td></tr></tfoot></table></div>
+  <div class="sub" style="margin-top:6px">칸 색: 초록 90점 이상 · 연초록 75~89 · 주황 60~74 · 빨강 60 미만(100점 환산). 칸 아래 숫자는 이 시험지를 본 전체 학생 중 등수예요. 회차 이름을 누르면 그 시험의 정오표로 가요.</div></div>`}
+/* ===== 학교 시험일정: 학교시험 a~b / 수학시험 a / 직전보강 a 전날 (2026-11-20 사용자) ===== */
+function schMd(d){if(!d)return '';const t=new Date(d+'T00:00:00');return (t.getMonth()+1)+'/'+t.getDate()+'('+DOW[t.getDay()]+')'}
+function schDday(d){if(!d)return null;const n=Math.round((new Date(d+'T00:00:00')-new Date(today()+'T00:00:00'))/864e5);return n}
+function schDtxt(n){return n==null?'':n>0?'D-'+n:n===0?'D-day':'지남'}
+function schInfo(name){const k=schoolKey(name),x=(DB.schools||{})[k]||{};const math=x.math||'',prep=x.prep||(math?shiftDate(math,-1):'');
+  const base=x.start||math,n=schDday(base);return {k,start:x.start||'',end:x.end||'',math,prep,prepAuto:!x.prep&&!!math,n}}
+function schoolCell(name){const i=schInfo(name);
+  const rng=i.start?schMd(i.start)+(i.end&&i.end!==i.start?'~'+schMd(i.end):''):'';
+  const part=(t,v)=>`<span style="white-space:nowrap">${t} ${v?esc(v):'<span style="color:#b45309">미입력</span>'}</span>`;
+  const dd=i.n==null?'':`<b style="margin-left:6px;color:${i.n>=0&&i.n<=14?'#dc2626':'#64748b'}">${schDtxt(i.n)}</b>`;
+  return `<div>${esc(name||'')}${dd}</div><a href="#/schools" class="sub" style="font-size:12px;display:block;text-decoration:none;color:#475569" title="누르면 학교 시험일정 입력 화면">${part('학교시험',rng)} / ${part('수학시험',schMd(i.math))} / ${part('직전보강',schMd(i.prep))}</a>`}
+function schSet(k,f,v){DB.schools=DB.schools||{};const x=DB.schools[k]=DB.schools[k]||{start:'',end:'',math:'',prep:''};x[f]=v;if(f==='math'&&!v)x.prep='';save();render()}
+function schAdd(){const el=document.getElementById('sch-new'),k=schoolKey(el&&el.value);if(!k)return toast('학교 이름을 적어 주세요');DB.schools=DB.schools||{};if(!DB.schools[k])DB.schools[k]={start:'',end:'',math:'',prep:''};save();render()}
+function schoolsPage(app){
+  ensureSchools();
+  const by={};Object.values(DB.roster.students).filter(s=>!s.archived).forEach(s=>{const k=schoolKey(s.school);if(k)(by[k]=by[k]||[]).push(s)});
+  const keys=Object.keys(DB.schools),withStu=keys.filter(k=>by[k]),noStu=keys.filter(k=>!by[k]);
+  const ord=(a,b)=>{const A=(DB.schools[a].start||DB.schools[a].math||'9999'),B=(DB.schools[b].start||DB.schools[b].math||'9999');return A.localeCompare(B)||a.localeCompare(b)};
+  withStu.sort(ord);noStu.sort(ord);
+  const row=k=>{const x=DB.schools[k],i=schInfo(k),st=(by[k]||[]).map(s=>s.name);
+    const inp=(f,v)=>`<input type="date" value="${esc(v||'')}" onchange="schSet('${esc(k)}','${f}',this.value)" style="width:140px">`;
+    return `<tr><td style="font-weight:700;white-space:nowrap">${esc(k)}</td><td class="sub" style="white-space:normal;min-width:120px">${st.length?st.length+'명 · '+esc(st.join(', ')):'-'}</td><td>${inp('start',x.start)}</td><td>${inp('end',x.end)}</td><td>${inp('math',x.math)}</td><td><input type="date" value="${esc(x.prep||'')}" placeholder="${esc(i.prep)}" onchange="schSet('${esc(k)}','prep',this.value)" style="width:140px">${i.prepAuto?`<div class="sub" style="font-size:11px">자동: 수학시험 전날 ${esc(schMd(i.prep))}</div>`:''}</td><td style="white-space:nowrap;font-weight:700;color:${i.n!=null&&i.n>=0&&i.n<=14?'#dc2626':'#64748b'}">${schDtxt(i.n)}</td></tr>`};
+  const head='<tr><th>학교</th><th>우리 학생</th><th>시험기간 시작</th><th>시험기간 끝</th><th>수학시험</th><th>직전보강 (비우면 수학시험 전날)</th><th>D-day</th></tr>';
+  app.innerHTML=`<div class="row"><h2 style="margin:0">학교 시험일정</h2><span class="sub">학교시험 기간 · 수학시험 날짜 · 직전보강일을 입력해요. 입력하면 반 [명단]의 학교 옆에 바로 보여요.</span></div>
+  <div class="scroll" style="max-height:none;margin-top:10px"><table class="t">${head}${withStu.map(row).join('')||'<tr><td colspan="7" class="sub">학생이 있는 학교가 아직 없어요.</td></tr>'}</table></div>
+  ${noStu.length?`<details style="margin-top:12px"><summary class="sub">학생이 아직 없는 학교 ${noStu.length}곳 (일정 미리 입력)</summary><div class="scroll" style="max-height:none"><table class="t">${head}${noStu.map(row).join('')}</table></div></details>`:''}
+  <div class="row" style="margin-top:12px"><input id="sch-new" placeholder="학교 추가 (예: 대치중)" style="width:180px"><button class="btn sm" onclick="schAdd()">+ 학교 추가</button></div>
+  <p class="note" style="margin-top:8px">'서울' 로 시작하는 학교 이름은 줄여서(서울원촌중 → 원촌중) 같은 학교로 묶어요. 시험기간은 엑셀 '학교시험일정'(내신 일정 캘린더)에서 가져왔고, 비어 있는 곳은 직접 입력해 주세요. D-day 는 시험기간 시작(없으면 수학시험)까지예요.</p>`}
 
 /* ===== 문자 (내신 사이트): 입력 → 자동 문자 → 복사. 2026-11-20 사용자 양식 (v2: 반 일괄 적용 · TEST 여러 개) ===== */
 function mDow(d){return DOW[new Date(d+'T00:00:00').getDay()]}
@@ -390,6 +472,8 @@ function render(){
   if(p==='student') return studentPage(app,a);
   if(p==='students') return studentsPage(app);
   if(p==='msg') return msgPage(app,a,q.get('s'));
+  if(p==='sheets') return sheetsPage(app);
+  if(p==='schools') return schoolsPage(app);
   if(p==='classedit') return classEdit(app,a);
   if(p==='backup') return backupPage(app);
   home(app);
@@ -402,7 +486,7 @@ const dstr=t=>t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0')+'-'+Str
 const shiftDate=(d,n)=>{const t=new Date(d+'T00:00:00');t.setDate(t.getDate()+n);return dstr(t)};
 const attDay=(cid,d)=>((DB.att[cid]||{})[d])||{};
 const periodTxt=c=>(c.start||c.end)?' · '+(c.start?c.start.slice(5).replace('-','/'):'')+'~'+(c.end?c.end.slice(5).replace('-','/'):''):'';
-function classTabs(cid,tab,c){const T=[['att','출결'],['exams','시험'],['scores','성적표'],['roster','명단 ('+c.members.length+')']];return `<div class="tabs">${T.map(([k,t])=>`<a class="${tab===k?'on':''}" href="#/class/${cid}?tab=${k}">${t}</a>`).join('')}</div>`}
+function classTabs(cid,tab,c){const T=[['att','출결'],['exams','시험'],['scores','성적표'],['roster','명단 ('+c.members.length+')']];return `<div class="tabs">${T.map(([k,t])=>`<a class="${tab===k?'on':''}" href="#/class/${cid}?tab=${k}">${t}</a>`).join('')}<a href="#/sheets" style="font-weight:700">시험지별 성적표</a><a href="#/schools" style="font-weight:700">학교 시험일정</a></div>`}
 function attPage(app,c,q){
   if(q.get('view')==='month')return attMonthPage(app,c,q);
   const cid=c.id,d=q.get('d')||today(),day=attDay(cid,d),dow=DOW[new Date(d+'T00:00:00').getDay()];
@@ -1117,8 +1201,8 @@ function diffBlock(e,ids){
 }
 
 /* ===== 반 성적표: 점수·등수·평균을 누적해서 한눈에 (대시보드) ===== */
-let SC_MODE='all',SC_N=0,SC_BASIS='total',SC_STU='',SC_DIST=-1,SC_TSV='';
-function setScMode(v){SC_MODE=v;render()}
+let SC_CAT='',SC_N=0,SC_BASIS='total',SC_STU='',SC_DIST=-1,SC_TSV='';
+function setScCat(v){SC_CAT=v;render()}
 function setScN(v){SC_N=+v||0;render()}
 function setScBasis(v){SC_BASIS=v;render()}
 function setScStu(v){SC_STU=v;render()}
@@ -1139,9 +1223,8 @@ function lineChartMulti(series,labels){
 }
 function scoresPage(app,c){
   const cid=c.id,cols=[],B=SC_BASIS;
-  examsOf(cid).forEach(e=>{const S={};const tot=examStudents(e,cid).length;examStudents(e,cid).forEach(m=>{const P=scoreParts(e,m.id);if(P){const t=score(e,m.id);S[m.id]={t,r:P.raw,p:P.part}}});if(Object.keys(S).length)cols.push({total:tot,t:'exam',label:e.name,date:e.date,max:totalPt(e)||100,S,link:`#/exam/${e.id}?c=${cid}&tab=analysis`,diff:diffAvgNum(e)})});
-  DB.daily.filter(d=>d.cid===cid).forEach(d=>{const S={};Object.entries(d.scores).forEach(([s,v])=>{if(v!==''&&v!=null)S[s]={t:+v,r:+v,p:0}});if(Object.keys(S).length)cols.push({total:new Set([...c.members.filter(m=>!m.hold).map(m=>m.id),...Object.keys(S)]).size,t:'daily',label:[d.unit,d.kind].filter(Boolean).join(' · ')||'일일테스트',date:d.date,max:+d.max||100,S,link:`#/class/${cid}?tab=daily`})});
-  let L=cols.filter(x=>SC_MODE==='all'||(SC_MODE==='exam'?x.t==='exam':x.t==='daily')).sort((a,b)=>a.date.localeCompare(b.date)||a.label.localeCompare(b.label));
+  examsOf(cid).forEach(e=>{const S={};const tot=examStudents(e,cid).length;examStudents(e,cid).forEach(m=>{const P=scoreParts(e,m.id);if(P){const t=score(e,m.id);S[m.id]={t,r:P.raw,p:P.part}}});if(Object.keys(S).length)cols.push({total:tot,t:'exam',cat:examCat(e),series:examSeries(e),round:examRound(e),label:e.name,date:e.date,max:totalPt(e)||100,S,link:`#/exam/${e.id}?c=${cid}&tab=grade`,diff:diffAvgNum(e)})});
+  let L=cols.filter(x=>!SC_CAT||x.cat===SC_CAT).sort(catSort);
   if(SC_N>0)L=L.slice(-SC_N);
   L.forEach(x=>{x.sc={};Object.entries(x.S).forEach(([s,o])=>x.sc[s]=B==='raw'?o.r:B==='part'?o.p:o.t);
     const vals=Object.values(x.sc);x.p={};Object.entries(x.sc).forEach(([s,v])=>x.p[s]=v/x.max*100);
@@ -1171,24 +1254,24 @@ function scoresPage(app,c){
   const dist=dx?bins.map(([t,lo,hi])=>({t,names:Object.keys(dx.p).filter(s=>dx.p[s]>=lo&&dx.p[s]<hi).map(s=>stu(s).name)})):[];
   const dmax=Math.max(1,...dist.map(d=>d.names.length));
   // 그래프
-  const labels=L.map(x=>x.date.slice(5)+(x.t==='daily'?'일':''));
+  const labels=L.map(x=>catOf(x.cat).s.slice(0,2)+(x.round?x.round+'회':x.date.slice(5)));
   const series=[{name:'반 평균',color:'#1968b3',w:3,label:true,vals:L.map(x=>x.avgP)},{name:'최고',color:'#16a34a',dash:true,w:1.5,vals:L.map(x=>x.hi/x.max*100)},{name:'최저',color:'#dc2626',dash:true,w:1.5,vals:L.map(x=>x.lo/x.max*100)}];
   if(SC_STU)series.push({name:stu(SC_STU)?stu(SC_STU).name:'',color:'#d97706',w:2.5,label:true,vals:L.map(x=>x.p[SC_STU]!=null?x.p[SC_STU]:null)});
   // 엑셀 복사
   SC_TSV=['이름',...L.map(x=>x.date.slice(5)+' '+x.label),'평균(100점환산)','평균 등수','응시'].join('\t')+'\n'+rows.map(r=>[stu(r.s).name,...L.map(x=>x.sc[r.s]==null?'':fmt(x.sc[r.s])),r.avgP==null?'':fmt(r.avgP),r.rk==null?'':fmt(r.rk),r.n+'/'+L.length].join('\t')).join('\n')+'\n'+['반 평균',...L.map(x=>fmt(x.avg)),fmt(allAvg),'',''].join('\t');
   app.innerHTML=`<div class="row"><h2 style="margin:0">${esc(c.name)}</h2>${roleBadge(c.role)+trkBadge(c)}<span class="sub">${c.days?esc(c.days)+' · ':''}총 ${c.members.filter(m=>!m.hold).length}명${c.members.some(m=>m.hold)?' (휴원 '+c.members.filter(m=>m.hold).length+')':''}${periodTxt(c)}</span></div>${classTabs(cid,'scores',c)}
-  <div class="row" style="margin-bottom:8px">${sel([['total','총점 (부분점수 포함)'],['raw','원점수만 (부분점수 제외)'],['part','부분점수만']],SC_BASIS,'setScBasis')}${sel([['all','시험 + 일일테스트'],['exam','시험만'],['daily','일일테스트만']],SC_MODE,'setScMode')}${sel([[0,'전체 기간'],[5,'최근 5회'],[10,'최근 10회']],SC_N,'setScN')}<span class="sp"></span><button class="btn sm" onclick="copyText(SC_TSV)">엑셀용 복사</button><button class="btn sm" onclick="printScores()">인쇄</button></div>
+  <div class="row" style="margin-bottom:8px">${sel([['total','총점 (부분점수 포함)'],['raw','원점수만 (부분점수 제외)'],['part','부분점수만']],SC_BASIS,'setScBasis')}${catChips(SC_CAT,'setScCat')}${sel([[0,'전체 기간'],[5,'최근 5회'],[10,'최근 10회']],SC_N,'setScN')}<span class="sp"></span><button class="btn sm" onclick="copyText(SC_TSV)">엑셀용 복사</button><button class="btn sm" onclick="printScores()">인쇄</button></div>
   ${L.length?`<div id="swrap">
-  <div class="row" style="margin:8px 0">${card('기록 횟수',L.length+'회',`시험 ${L.filter(x=>x.t==='exam').length} · 일일 ${L.filter(x=>x.t==='daily').length}`)}${card('최근 반 평균',fmt(last.avg)+'점',dLast==null?'':`직전 대비 ${sgn(dLast)}%p`,dLast==null?'':dLast>0?'#16a34a':dLast<0?'#dc2626':'')}${card('기간 평균(100점 환산)',fmt(allAvg),best?`최고 ${best.date.slice(5)} ${fmt(best.avgP)}`:'')}${card('최근 60점 미만',last.low+'명',`응시 ${last.n}명 중`,last.low?'#dc2626':'')}${card('주의 학생',warn.length+'명',warn.length?'아래 목록 확인':'없음',warn.length?'#d97706':'')}</div>
+  <div class="row" style="margin:8px 0">${card('기록 횟수',L.length+'회',EXAM_CATS.map(c=>c.s+' '+L.filter(x=>x.cat===c.k).length).join(' · '))}${card('최근 반 평균',fmt(last.avg)+'점',dLast==null?'':`직전 대비 ${sgn(dLast)}%p`,dLast==null?'':dLast>0?'#16a34a':dLast<0?'#dc2626':'')}${card('기간 평균(100점 환산)',fmt(allAvg),best?`최고 ${best.date.slice(5)} ${fmt(best.avgP)}`:'')}${card('최근 60점 미만',last.low+'명',`응시 ${last.n}명 중`,last.low?'#dc2626':'')}${card('주의 학생',warn.length+'명',warn.length?'아래 목록 확인':'없음',warn.length?'#d97706':'')}</div>
   <h3>반 평균 추이 <span class="sub">${unit} 기준, 100점 환산 · 점선은 최고/최저</span>
     <select style="margin-left:8px" onchange="setScStu(this.value)"><option value="">학생 비교 없음</option>${rows.map(r=>`<option value="${r.s}" ${SC_STU===r.s?'selected':''}>${esc(stu(r.s).name)} 겹쳐 보기</option>`).join('')}</select></h3>
   ${lineChartMulti(series,labels)}
   <h3>${unit} 성적표 <span class="sub">칸 위: 점수 · 아래: 등수</span></h3>
-  <div class="scroll" style="max-height:none"><table class="t" style="white-space:nowrap"><thead><tr><th style="${stk}">이름</th>${L.map(x=>`<th style="text-align:center;min-width:70px"><a href="${x.link}" style="color:inherit" title="${esc(x.label)}"><div class="sub" style="font-weight:400">${esc(x.date.slice(5))}${x.t==='daily'?' 일일':''}</div>${esc(x.label.length>10?x.label.slice(0,10)+'…':x.label)}</a>${x.max!==100?`<div class="sub" style="font-weight:400">/${fmt(x.max)}</div>`:''}${x.diff?`<div class="sub" style="font-weight:400">난이도 ${D5[Math.round(x.diff)]}</div>`:''}<div class="sub" style="font-weight:400">응시 ${x.n}/${x.total}명</div></th>`).join('')}<th style="text-align:center;border-left:2px solid var(--line)">평균 점수</th><th style="text-align:center">평균 등수</th><th style="text-align:center">최근 등수</th><th style="text-align:center">응시</th><th style="text-align:center">추세</th><th style="text-align:center">흐름</th><th style="text-align:center" title="전체 총점 중 부분점수가 차지하는 비율">부분 비중</th></tr></thead>
+  <div class="scroll" style="max-height:none"><table class="t" style="white-space:nowrap"><thead><tr><th style="${stk}">이름</th>${L.map(x=>`<th style="text-align:center;min-width:78px;border-top:4px solid ${catOf(x.cat).c}"><div style="font-size:11px;font-weight:700;color:${catOf(x.cat).c}">${esc(catOf(x.cat).s)}</div><a href="${x.link}" style="color:inherit" title="${esc(x.label)}"><div style="font-size:16px;font-weight:700">${x.round?x.round+'회':esc(x.date.slice(5))}</div><div class="sub" style="font-weight:400">${esc(x.series.length>12?x.series.slice(0,12)+'…':x.series)}</div><div class="sub" style="font-weight:400">${esc(x.date.slice(5))}</div></a>${x.max!==100?`<div class="sub" style="font-weight:400">/${fmt(x.max)}</div>`:''}${x.diff?`<div class="sub" style="font-weight:400">난이도 ${D5[Math.round(x.diff)]}</div>`:''}<div class="sub" style="font-weight:400">응시 ${x.n}/${x.total}명</div></th>`).join('')}<th style="text-align:center;border-left:2px solid var(--line)">평균 점수</th><th style="text-align:center">평균 등수</th><th style="text-align:center">최근 등수</th><th style="text-align:center">응시</th><th style="text-align:center">추세</th><th style="text-align:center">흐름</th><th style="text-align:center" title="전체 총점 중 부분점수가 차지하는 비율">부분 비중</th></tr></thead>
   <tbody>${rows.map(r=>`<tr><td style="${stk};font-weight:600"><a href="#/student/${r.s}" style="color:inherit">${esc(stu(r.s).name)}</a></td>${L.map(x=>{const v=x.sc[r.s];return v==null?'<td style="text-align:center;color:#bbb">·</td>':`<td style="text-align:center;background:${bg(x.p[r.s])}"><b>${fmt(v)}</b>${x.n>1?`<div class="sub" style="font-size:11px">${x.rank[r.s]}등</div>`:''}</td>`}).join('')}<td style="text-align:center;border-left:2px solid var(--line)"><b>${r.avgP==null?'-':fmt(r.avgP)}</b></td><td style="text-align:center">${r.rk==null?'-':fmt(r.rk)+'등'}</td><td style="text-align:center">${r.rkCh==null?'-':r.rkCh>0?`<span style="color:#16a34a">▲${r.rkCh}</span>`:r.rkCh<0?`<span style="color:#dc2626">▼${-r.rkCh}</span>`:'–'}</td><td style="text-align:center">${r.n}/${L.length}</td><td style="text-align:center">${r.trend==null?'-':sgn(r.trend)}</td><td style="text-align:center">${sparkV(r.ps)}</td><td style="text-align:center" class="sub">${r.share>0?Math.round(r.share)+'%':'-'}</td></tr>`).join('')}</tbody>
   <tfoot>${[['반 평균',x=>fmt(x.avg),true],['중앙값',x=>fmt(x.med)],['최고',x=>fmt(x.hi)],['최저',x=>fmt(x.lo)],['표준편차',x=>x.sd==null?'-':fmt(x.sd)],['60점 미만',x=>x.low+'명'],['응시 / 총인원',x=>x.n+'/'+x.total+'명']].map(([t,f,b],i)=>`<tr style="${i===0?'background:var(--bg)':''}"><td style="${stk};${b?'font-weight:700':''}" ${b?'':'class="sub"'}>${t}</td>${L.map(x=>`<td style="text-align:center" ${b?'':'class="sub"'}>${b?'<b>'+f(x)+'</b>':f(x)}</td>`).join('')}<td style="text-align:center;border-left:2px solid var(--line)">${i===0?'<b>'+fmt(allAvg)+'</b>':''}</td><td colspan="6"></td></tr>`).join('')}</tfoot></table></div>
   <div class="sub" style="margin-top:6px">칸 색: 초록 90점 이상 · 연초록 75~89 · 주황 60~74 · 빨강 60 미만(100점 환산). 평균 점수 순서로 정렬. 추세 = 최근 3회 평균 − 그 이전 평균. 최근 등수 = 직전 기록 대비 등수 변화. 부분 비중이 높은 학생은 정답보다 풀이 점수로 점수를 받은 학생이에요. 시험 이름을 누르면 그 시험 분석으로 가요.</div>
-  <h3>점수 분포 <select style="margin-left:6px" onchange="setScDist(this.value)">${L.map((x,i)=>`<option value="${i}" ${i===di?'selected':''}>${esc(x.date.slice(5))} ${esc(x.label.slice(0,14))}</option>`).join('')}</select></h3>
+  <h3>점수 분포 <select style="margin-left:6px" onchange="setScDist(this.value)">${L.map((x,i)=>`<option value="${i}" ${i===di?'selected':''}>${esc(catOf(x.cat).s)} ${x.round?x.round+'회':''} ${esc(x.series.slice(0,12))}</option>`).join('')}</select></h3>
   <table class="t"><tr><th>구간</th><th>인원</th><th>학생</th></tr>${dist.map(d=>`<tr><td>${d.t}</td><td style="min-width:130px"><div class="row" style="gap:6px;flex-wrap:nowrap"><div class="bar ${d.t==='60 미만'?'low':''}" style="width:90px;min-width:90px"><i style="width:${Math.round(d.names.length/dmax*100)}%"></i></div><b>${d.names.length}</b></div></td><td class="sub" style="white-space:normal">${esc(d.names.join(', '))||'-'}</td></tr>`).join('')}</table>
   <h3>관리 필요 학생 <span class="sub">최근 60점 미만 · 추세 −10 이하 · 3회 연속 하락 · 미응시 많음</span></h3>
   ${warn.length?`<table class="t"><tr><th>이름</th><th>이유</th><th>최근</th><th>평균</th></tr>${warn.map(({r,why})=>`<tr><td><a href="#/student/${r.s}" style="color:inherit;font-weight:600">${esc(stu(r.s).name)}</a></td><td style="white-space:normal;color:#dc2626">${esc(why.join(' · '))}</td><td>${r.last==null?'-':fmt(r.last)}</td><td>${fmt(r.avgP)}</td></tr>`).join('')}</table>`:'<p class="note">지금은 관리가 필요한 학생이 없어요.</p>'}
@@ -1280,8 +1363,8 @@ function classPage(app,cid,tab,q){
       <div class="row" style="margin-top:8px"><input id="ns-i" placeholder="ID(선택)" style="width:90px"><input id="ns-n" placeholder="이름" style="width:100px"><input id="ns-g" placeholder="학년 (예: 중2)" style="width:110px"><input id="ns-s" placeholder="학교" style="width:150px"><button class="btn pri" onclick="newStu('${cid}')">추가</button></div>
       <div class="row" style="margin-top:8px"><select id="ns-e"><option value="">기존 학생에서 선택…</option>${others.map(s=>`<option value="${s.id}">${esc(s.name)} · ${esc(s.grade)} ${esc(s.school)}</option>`).join('')}</select><button class="btn" onclick="existStu('${cid}')">이 반에 넣기</button></div>
       <details style="margin-top:8px"><summary class="sub">여러 명 한꺼번에 (한 줄에 [ID,] 이름, 학년, 학교)</summary><textarea id="ns-b" rows="4" placeholder="2169926, 김철수, 중2, 서일중   (ID는 생략 가능)"></textarea><button class="btn sm" onclick="bulkStu('${cid}')">추가</button></details></div>
-    <table class="t" style="margin-top:12px"><tr><th>이름</th><th>학년</th><th class="hide-s">학교</th><th>최근 점수</th><th></th></tr>`+c.members.map(m=>{const s=stu(m.id);const last=examsOf(cid).map(e=>score(e,m.id)).find(v=>v!=null);
-      return `<tr class="${m.hold?'hold':''}"><td><a href="#/student/${m.id}" style="color:inherit">${esc(s.name)}</a>${m.hold?' <span class="badge">휴원</span>':''}</td><td>${esc(s.grade)}</td><td class="hide-s">${esc(s.school)}</td><td>${fmt(last)}</td>
+    <table class="t" style="margin-top:12px"><tr><th>이름</th><th>학년</th><th>학교 · 시험일정</th><th>최근 점수</th><th></th></tr>`+c.members.map(m=>{const s=stu(m.id);const last=examsOf(cid).map(e=>score(e,m.id)).find(v=>v!=null);
+      return `<tr class="${m.hold?'hold':''}"><td><a href="#/student/${m.id}" style="color:inherit">${esc(s.name)}</a>${m.hold?' <span class="badge">휴원</span>':''}</td><td>${esc(s.grade)}</td><td>${schoolCell(s.school)}</td><td>${fmt(last)}</td>
       <td style="text-align:right;white-space:nowrap"><button class="btn sm" onclick="toggleHold('${cid}','${m.id}')">${m.hold?'복귀':'휴원'}</button> <select class="btn sm" onchange="moveStu('${cid}','${m.id}',this.value)"><option value="">이동…</option>${targets.map(t=>`<option value="${t.id}">${esc(t.name)}</option>`).join('')}</select> <button class="btn sm danger" onclick="outStu('${cid}','${m.id}')">빼기</button> <button class="btn sm danger" title="모든 반에서 빼고 보관(기록은 남아요)" onclick="archiveStu('${m.id}')">퇴원</button></td></tr>`}).join('')+`</table><p class="note" style="margin-top:8px"><b>휴원</b>=반에 남은 채 잠시 쉼 · <b>빼기</b>=이 반에서만 제외(다른 반은 유지) · <b>퇴원</b>=모든 반에서 빠지고 보관 ([학생 전체] → 퇴원 포함에서 복원)</p>
     <div class="row" style="margin-top:12px"><button class="btn sm" onclick="location.hash='#/classedit/${cid}'">반 설정</button></div>`;
   }else{
@@ -1348,7 +1431,7 @@ function newStuAll(){const n=$('#ns-n').value.trim();if(!n)return alert('이름�
 let DRAFT=null;
 function examEditor(app,id,cid){
   if(!DRAFT||DRAFT._id!==(id||'new:'+cid)){
-    const e=id?JSON.parse(JSON.stringify(DB.exams.find(x=>x.id===id))):{name:'',type:(cls(cid)&&cls(cid).track==='내신')?'단원테스트':'학력평가',date:today(),classIds:[cid],items:Array.from({length:20},()=>({ans:'',unit:'',kind:'',pt:5}))};
+    const e=id?JSON.parse(JSON.stringify(DB.exams.find(x=>x.id===id))):{name:'',type:'기출 예상 모의고사',date:today(),classIds:[cid],items:Array.from({length:20},()=>({ans:'',unit:'',kind:'',pt:5}))};
     e._id=id||'new:'+cid; e._existing=id||null; DRAFT=e;
   }
   const e=DRAFT;
