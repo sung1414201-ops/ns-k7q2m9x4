@@ -80,7 +80,7 @@ details.fold details.fold{margin:6px 0;border-color:var(--line)}
 <main id="app"></main>
 <div id="printArea"></div>
 <script src="roster.js"></script>
-<script src="firebase-config.js?v=20261120163427"></script>
+<script src="firebase-config.js?v=20261120164031"></script>
 <script>
 /* ===== 저장소 (지금은 이 기기 localStorage. 나중에 Firebase로 교체할 자리) ===== */
 /* ===== 시험 3종류 (2026-11-20 사용자): 단원별 모의고사 · 기출 예상 모의고사 · 실전 기출 모의고사 ===== */
@@ -262,7 +262,7 @@ window.addEventListener('hashchange',()=>{if(NAVSKIP){NAVSKIP=false;updateBack()
 function goBack(){if(NAVST.length>1){NAVST.pop();NAVSKIP=true;location.hash=NAVST[NAVST.length-1]}else location.hash='#/'}
 document.addEventListener('DOMContentLoaded',updateBack);
 /* 새 버전 알림: 사이트에 새 버전이 올라오면 화면 아래에 알려줘요 */
-const BUILD_ID='20261120163427';
+const BUILD_ID='20261120164031';
 async function checkNewVersion(){
   if(BUILD_ID==='dev'||!/^https?:/.test(location.protocol))return;
   try{const t=await fetch(location.pathname+'?chk='+Date.now(),{cache:'no-store'}).then(r=>r.text());
@@ -288,7 +288,7 @@ function jobReset(){jobSet({state:'idle'});render()}
 function jobPoll(){const d=jobCloud();if(!d)return;d.get().then(s=>{if(!s.exists)return;const n=s.data();if(JSON.stringify(n)!==JSON.stringify(JOBST)){JOBST=n;try{localStorage.setItem(JOB_KEY,JSON.stringify(n))}catch(e){}if(!location.hash||location.hash==='#/'||location.hash==='#')render()}}).catch(()=>{})}
 setInterval(jobPoll,20000);
 function jobBlock(){const j=JOBST||{};
-  if(j.state==='running')return `<div class="card" style="margin:10px 0;border-color:#f59e0b;background:#fffbeb"><div class="row"><b style="font-size:16px">⏳ 작업 중</b><span class="sub">${jobTime(j.startedAt)} 시작 · 끝나면 여기에 완료로 바뀌어요</span><span class="sp"></span><a href="javascript:void 0" class="sub" onclick="if(confirm('작업 상태를 초기화할까요?'))jobReset()">초기화</a></div></div>`;
+  if(j.state==='running')return `<div class="card" style="margin:10px 0;border-color:#f59e0b;background:#fffbeb"><div class="row"><b style="font-size:16px">⏳ 작업 중</b><span class="sub">${jobTime(j.startedAt)} 시작 · 끝나면 여기에 완료로 바뀌어요</span><span class="sp"></span><a href="javascript:void 0" class="sub" onclick="if(confirm('작업 상태를 초기화할까요?'))jobReset()">초기화</a></div><div class="sub" style="margin-top:6px">작업 중에 다른 선생님이 답안지를 접수 폴더에 올려도 자동으로 함께 처리돼요. 다시 누르지 않아도 돼요.</div></div>`;
   return `<div class="card" style="margin:10px 0">${j.state==='done'?`<div style="margin-bottom:8px"><b style="color:#16a34a;font-size:16px">✔ 작업 완료</b> <span class="sub">${jobTime(j.doneAt)}</span></div>`:''}<div class="row"><button class="btn pri" onclick="jobStart()">▶ 작업 시작</button><span class="sub">답안지를 접수 폴더에 올린 뒤 눌러 주세요.</span></div></div>`}
 
 /* ===== 시험 종류·회차 도우미 ===== */
