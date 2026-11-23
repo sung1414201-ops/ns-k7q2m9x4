@@ -76,11 +76,11 @@ details.fold details.fold{margin:6px 0;border-color:var(--line)}
 </style>
 </head>
 <body>
-<header><h1 onclick="location.hash='#/'">내신 사이트</h1><span id="syncState" class="sub"></span><nav><button class="btn sm" id="backBtn" onclick="goBack()" title="이전 화면으로 (앱 안에서 본 순서대로)">← 뒤로</button><button class="btn sm" id="undoBtn" onclick="undo()" title="직전 동작 되돌리기 (Ctrl+Z)">↶ 되돌리기</button><button class="btn sm" id="redoBtn" onclick="redo()" title="다시 실행">↷</button><button class="btn sm" onclick="location.hash='#/'">홈</button><button class="btn sm" onclick="location.hash='#/sheets'">시험지별</button><button class="btn sm" onclick="location.hash='#/schools'">학교일정</button><button class="btn sm" onclick="location.hash='#/msg'">문자</button><button class="btn sm" onclick="location.hash='#/backup'">백업</button></nav></header>
+<header><h1 onclick="location.hash='#/'">내신 사이트</h1><span id="syncState" class="sub"></span><nav><button class="btn sm" id="backBtn" onclick="goBack()" title="이전 화면으로 (앱 안에서 본 순서대로)">← 뒤로</button><button class="btn sm" id="undoBtn" onclick="undo()" title="직전 동작 되돌리기 (Ctrl+Z)">↶ 되돌리기</button><button class="btn sm" id="redoBtn" onclick="redo()" title="다시 실행">↷</button><button class="btn sm" onclick="location.hash='#/'">홈</button><button class="btn sm" onclick="location.hash='#/sheets'">시험지별</button><button class="btn sm" onclick="location.hash='#/schools'">학교일정</button><button class="btn sm" onclick="location.hash='#/msg'">문자</button><button class="btn sm" id="quickAnsBtn" onclick="window.open(QUICK_ANS_URL,'_blank','noopener')" title="빠른정답 사이트 (새 창, 접속 코드 필요)">빠른정답 ↗</button><button class="btn sm" onclick="location.hash='#/backup'">백업</button></nav></header>
 <main id="app"></main>
 <div id="printArea"></div>
 <script src="roster.js"></script>
-<script src="firebase-config.js?v=20261121100219"></script>
+<script src="firebase-config.js?v=20261123160250"></script>
 <script>
 /* ===== 저장소 (지금은 이 기기 localStorage. 나중에 Firebase로 교체할 자리) ===== */
 /* ===== 시험 3종류 (2026-11-20 사용자): 단원별 모의고사 · 기출 예상 모의고사 · 실전 기출 모의고사 ===== */
@@ -262,7 +262,7 @@ window.addEventListener('hashchange',()=>{if(NAVSKIP){NAVSKIP=false;updateBack()
 function goBack(){if(NAVST.length>1){NAVST.pop();NAVSKIP=true;location.hash=NAVST[NAVST.length-1]}else location.hash='#/'}
 document.addEventListener('DOMContentLoaded',updateBack);
 /* 새 버전 알림: 사이트에 새 버전이 올라오면 화면 아래에 알려줘요 */
-const BUILD_ID='20261121100219';
+const QUICK_ANS_URL='https://golden-genie-fafebf.netlify.app/';const BUILD_ID='20261123160250';
 async function checkNewVersion(){
   if(BUILD_ID==='dev'||!/^https?:/.test(location.protocol))return;
   try{const t=await fetch(location.pathname+'?chk='+Date.now(),{cache:'no-store'}).then(r=>r.text());
