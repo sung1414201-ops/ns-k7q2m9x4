@@ -84,8 +84,8 @@ details.fold details.fold{margin:6px 0;border-color:var(--line)}
 <script>
 /* ===== 저장소 (지금은 이 기기 localStorage. 나중에 Firebase로 교체할 자리) ===== */
 /* ===== 시험 3종류 (2026-11-20 사용자): 단원별 모의고사 · 기출 예상 모의고사 · 실전 기출 모의고사 ===== */
-const EXAM_CATS=[{k:'단원별 모의고사',s:'단원별',c:'#7c3aed'},{k:'기출 예상 모의고사',s:'기출예상',c:'#1968b3'},{k:'실전 기출 모의고사',s:'실전기출',c:'#0f766e'}];
-function guessCat(e){if(EXAM_CATS.some(c=>c.k===e.type))return e.type;const n=e.name||'';if(n.includes('단원별'))return EXAM_CATS[0].k;if(n.includes('실전'))return EXAM_CATS[2].k;if(n.includes('예상'))return EXAM_CATS[1].k;return null}
+const EXAM_CATS=[{k:'단원별 모의고사',s:'단원별',c:'#7c3aed'},{k:'기출 예상 모의고사',s:'기출예상',c:'#1968b3'},{k:'실전 기출 모의고사',s:'실전기출',c:'#0f766e'},{k:'서술형 평가',s:'서술형',c:'#c2410c'}];
+function guessCat(e){if(EXAM_CATS.some(c=>c.k===e.type))return e.type;const n=e.name||'';if(n.includes('서술형'))return '서술형 평가';if(n.includes('단원별'))return EXAM_CATS[0].k;if(n.includes('실전'))return EXAM_CATS[2].k;if(n.includes('예상'))return EXAM_CATS[1].k;return null}
 function normExamTypes(){(DB.exams||[]).forEach(e=>{const c=guessCat(e);if(c&&e.type!==c)e.type=c})}
 const SCHOOL_SEED={'경원중':['2026-12-14','2026-12-16'],'동덕여중':['2026-12-08','2026-12-10'],'동양중':['',''],'동작중':['',''],'방배중':['2026-12-15','2026-12-17'],'상현중':['',''],'서문여중':['2026-12-11','2026-12-15'],'서운중':['2026-12-16','2026-12-18'],'서일중':['2026-12-14','2026-12-16'],'서초중':['2026-12-16','2026-12-17'],'세화여중':['2026-12-14','2026-12-17'],'신동중':['2026-12-08','2026-12-09'],'신반포중':['2026-12-21','2026-12-23'],'언북중':['',''],'여의도중':['',''],'영동중':['2026-12-14','2026-12-16'],'오산중':['',''],'옥정중':['',''],'원촌중':['2026-12-09','2026-12-10'],'중대부중':['','']}; // 엑셀 학교시험일정(내신 일정 캘린더)의 시험기간
 function schoolKey(n){return String(n||'').trim().replace(/^서울/,'')}
@@ -1859,4 +1859,5 @@ syncInit();
 </script>
 </body>
 </html>
+
 
