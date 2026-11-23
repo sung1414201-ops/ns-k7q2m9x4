@@ -511,7 +511,7 @@ function render(){
   const q=new URLSearchParams(qs||'');
   const app=$('#app');
   if(!p||p==='') return home(app);
-  if(p==='class') return classPage(app,a,q.get('tab')||'exams',q);
+  if(p==='class') return classPage(app,a,q.get('tab')||'att',q);
   if(p==='exam') return a==='new'?examEditor(app,null,b):(b==='edit'?examEditor(app,a):examPage(app,a,(q.get('c')),q.get('tab')||'grade'));
   if(p==='student') return studentPage(app,a);
   if(p==='students') return studentsPage(app);
@@ -1859,3 +1859,4 @@ syncInit();
 </script>
 </body>
 </html>
+
