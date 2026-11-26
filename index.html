@@ -80,7 +80,7 @@ details.fold details.fold{margin:6px 0;border-color:var(--line)}
 <main id="app"></main>
 <div id="printArea"></div>
 <script src="roster.js"></script>
-<script src="firebase-config.js?v=20261126165219"></script>
+<script src="firebase-config.js?v=20261126165930"></script>
 <script>
 /* ===== 저장소 (지금은 이 기기 localStorage. 나중에 Firebase로 교체할 자리) ===== */
 /* ===== 시험 3종류 (2026-11-20 사용자): 단원별 모의고사 · 기출 예상 모의고사 · 실전 기출 모의고사 ===== */
@@ -262,7 +262,7 @@ window.addEventListener('hashchange',()=>{if(NAVSKIP){NAVSKIP=false;updateBack()
 function goBack(){if(NAVST.length>1){NAVST.pop();NAVSKIP=true;location.hash=NAVST[NAVST.length-1]}else location.hash='#/'}
 document.addEventListener('DOMContentLoaded',updateBack);
 /* 새 버전 알림: 사이트에 새 버전이 올라오면 화면 아래에 알려줘요 */
-const QUICK_ANS_URL='https://golden-genie-fafebf.netlify.app/';const BUILD_ID='20261126165219';
+const QUICK_ANS_URL='https://golden-genie-fafebf.netlify.app/';const BUILD_ID='20261126165930';
 async function checkNewVersion(){
   if(BUILD_ID==='dev'||!/^https?:/.test(location.protocol))return;
   try{const t=await fetch(location.pathname+'?chk='+Date.now(),{cache:'no-store'}).then(r=>r.text());
@@ -1388,7 +1388,7 @@ const hasResults=sid=>DB.exams.some(e=>(DB.results[e.id]||{})[sid]);
 const activeClasses=()=>DB.roster.classes.filter(c=>!c.archived);
 function examStudents(e,cid){ // 이 시험을 본 학생(반을 옮겨도 기록이 남게, 시험에 저장된 명단을 우선)
   const c=cls(cid),cur=new Map((c?c.members:[]).map(m=>[m.id,m]));
-  const ids=e.roster&&Object.keys(e.roster).length?Object.keys(e.roster).filter(s=>e.roster[s]===cid):[...cur.keys()];
+  const ids=e.roster&&Object.keys(e.roster).length?[...Object.keys(e.roster).filter(s=>e.roster[s]===cid),...[...cur.keys()].filter(s=>!e.roster[s]&&(DB.results[e.id]||{})[s])]:[...cur.keys()];
   return ids.filter(s=>stu(s)).map(s=>({id:s,hold:!!(cur.get(s)||{}).hold})).sort((a,b)=>stu(a.id).name.localeCompare(stu(b.id).name,'ko'));
 }
 
